@@ -2,16 +2,10 @@ import torch
 import torch.nn as nn
 
 
-class UNet(nn.Module):
-    """ 
-    A simple U-Net architecture for image segmentation.
-    Based on the U-Net architecture from the original paper:
-    Olaf Ronneberger et al. (2015), "U-Net: Convolutional Networks for Biomedical Image Segmentation"
-    https://arxiv.org/pdf/1505.04597.pdf
-    """
+class model(nn.Module):
     def __init__(self, in_channels=3, n_classes=1):
         
-        super(UNet, self).__init__()
+        super(model, self).__init__()
 
         self.inc = (DoubleConv(in_channels, 64))
         self.down1 = (Down(64, 128))
