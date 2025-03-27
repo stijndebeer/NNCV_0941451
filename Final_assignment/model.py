@@ -5,7 +5,7 @@ import torch.nn as nn
 class Model(nn.Module):
     def __init__(self, in_channels=3, n_classes=19):
         
-        super(model, self).__init__()
+        super(Model, self).__init__()
 
         self.dconv11 = (DoubleConv(in_channels, 64))
         self.dconv12 = (DoubleConv(64, 64))
