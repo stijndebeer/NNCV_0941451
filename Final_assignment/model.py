@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 
-class model(nn.Module):
+class testnet(nn.Module):
     def __init__(self, in_channels=3, n_classes=19):
         
         super(model, self).__init__()
