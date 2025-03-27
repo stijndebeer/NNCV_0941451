@@ -234,11 +234,11 @@ def main(args):
             valid_loss = sum(losses) / len(losses)
             mean_dice_scores = torch.tensor(all_dice_scores).mean(dim=0).tolist() #dice
             overall_mean_dice = sum(mean_dice_scores) / 19 #dice
-            print(f"Logging to W&B: valid_loss={valid_loss}, dice_score={mean_dice}")
+            print(f"Logging to W&B: valid_loss={valid_loss}, mean_dice_score={mean_dice_scores}, overall_mean_dice={overall_mean_dice}")
             wandb.log({
                 "valid_loss": valid_loss,
                 "mean_dice_score": overall_mean_dice, #dice
-                **{f"dice_class_{i}": score for i, score in enumerate(mean_dice_scores)} #dice
+                # **{f"dice_class_{i}": score for i, score in enumerate(mean_dice_scores)} #dice per class
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:
