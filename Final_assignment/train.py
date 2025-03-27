@@ -68,6 +68,17 @@ def get_args_parser():
 
     return parser
 
+def dice_score(preds, targets, eps=1e-6):
+    """Computes the Dice Score"""
+    preds = preds.argmax(1)  # Convert logits to class indices
+    preds = preds.view(-1)
+    targets = targets.view(-1)
+
+    intersection = (preds * targets).sum().float()
+    union = preds.sum().float() + targets.sum().float()
+
+    return (2.0 * intersection + eps) / (union + eps)
+
 
 def main(args):
     # Initialize wandb for logging
@@ -144,7 +155,9 @@ def main(args):
 
     # Training loop
     best_valid_loss = float('inf')
+    best_dice = float('inf')
     current_best_model_path = None
+    current_best_dice_path = None
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1:04}/{args.epochs:04}")
 
@@ -173,6 +186,7 @@ def main(args):
         model.eval()
         with torch.no_grad():
             losses = []
+            dice_scores = []
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -183,6 +197,11 @@ def main(args):
                 outputs = model(images)
                 loss = criterion(outputs, labels)
                 losses.append(loss.item())
+                
+                # Compute Dice Score
+                dice = dice_score(outputs.softmax(1), labels)
+                dice_scores.append(dice.item())
+                #
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
@@ -205,8 +224,10 @@ def main(args):
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
             
             valid_loss = sum(losses) / len(losses)
+            mean_dice = sum(dice_scores) / len(dice_scores)  # Average Dice Score
             wandb.log({
-                "valid_loss": valid_loss
+                "valid_loss": valid_loss,
+                "dice_score": mean_dice,  # Log Dice Score
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:
@@ -218,6 +239,16 @@ def main(args):
                     f"best_model-epoch={epoch:04}-val_loss={valid_loss:04}.pth"
                 )
                 torch.save(model.state_dict(), current_best_model_path)
+
+            if mean_dice < best_dice:
+                best_dice = mean_dice
+                if current_best_dice_path:
+                    os.remove(current_best_dice_path)
+                current_best_dice_path = os.path.join(
+                    output_dir, 
+                    f"best_model-epoch={epoch:04}-val_loss={mean_dice:04}.pth"
+                )
+                torch.save(model.state_dict(), current_best_dice_path)
         
     print("Training complete!")
 
