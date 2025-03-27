@@ -30,7 +30,7 @@ from torchvision.transforms.v2 import (
     ToDtype,
 )
 
-from model import testnet
+from model import model
 
 
 # Mapping class IDs to train IDs
@@ -131,7 +131,7 @@ def main(args):
     )
 
     # Define the model
-    model = testnet(
+    model = model(
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
     ).to(device)
