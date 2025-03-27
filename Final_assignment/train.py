@@ -69,41 +69,23 @@ def get_args_parser():
 
     return parser
 
-# def dice_score(preds, targets, eps=1e-6):
-#     """Computes the Dice Score"""
-#     preds = preds.argmax(1)  # Convert logits to class indices
-#     preds = preds.view(-1)
-#     targets = targets.view(-1)
-
-#     intersection = (preds * targets).sum().float()
-#     union = preds.sum().float() + targets.sum().float()
-
-#     return (2.0 * intersection + eps) / (union + eps)
-
-def multiclass_dice_loss(pred, target, smooth=1): #https://medium.com/data-scientists-diary/implementation-of-dice-loss-vision-pytorch-7eef1e438f68
-    """
-    Computes Dice Loss for multi-class segmentation.
-    Args:
-        pred: Tensor of predictions (batch_size, C, H, W).
-        target: One-hot encoded ground truth (batch_size, C, H, W).
-        smooth: Smoothing factor.
-    Returns:
-        Scalar Dice Loss.
-    """
-    pred = F.softmax(pred, dim=1)  # Convert logits to probabilities
-    num_classes = pred.shape[1]  # Number of classes (C)
-    dice = 0  # Initialize Dice loss accumulator
+def dice_score(preds, labels, num_classes, epsilon=1e-6):
+    """Computes the Dice Score for multiple classes"""
+    dice_per_class = []
     
-    for c in range(num_classes):  # Loop through each class
-        pred_c = pred[:, c]  # Predictions for class c
-        target_c = target[:, c]  # Ground truth for class c
-        
-        intersection = (pred_c * target_c).sum(dim=(1, 2))  # Element-wise multiplication
-        union = pred_c.sum(dim=(1, 2)) + target_c.sum(dim=(1, 2))  # Sum of all pixels
-        
-        dice += (2. * intersection + smooth) / (union + smooth)  # Per-class Dice score
+    for class_id in range(num_classes):
+        pred_mask = (preds == class_id).float()
+        label_mask = (labels == class_id).float()
 
-    return 1 - dice.mean() / num_classes  # Average Dice Loss across classes
+        intersection = (pred_mask * label_mask).sum()
+        union = pred_mask.sum() + label_mask.sum()
+
+        dice = (2. * intersection + epsilon) / (union + epsilon)
+        dice_per_class.append(dice.item())
+
+    mean_dice = sum(dice_per_class) / num_classes
+    return dice_per_class, mean_dice
+
 
 
 def main(args):
@@ -181,9 +163,9 @@ def main(args):
 
     # Training loop
     best_valid_loss = float('inf')
-    best_dice = float('inf')
+    # best_dice = float('inf')
     current_best_model_path = None
-    current_best_dice_path = None
+    # current_best_dice_path = None
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1:04}/{args.epochs:04}")
 
@@ -212,7 +194,7 @@ def main(args):
         model.eval()
         with torch.no_grad():
             losses = []
-            dice_scores = []
+            all_dice_scores = [] #dice
             for i, (images, labels) in enumerate(valid_dataloader):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
@@ -225,8 +207,8 @@ def main(args):
                 losses.append(loss.item())
                 
                 # Compute Dice Score
-                dice = multiclass_dice_loss(outputs.softmax(1), labels)
-                dice_scores.append(dice.item())
+                dice_scores, mean_dice = dice_score(outputs.softmax(1).argmax(1), labels, 19)
+                all_dice_scores.append(dice_scores)
                 #
             
                 if i == 0:
@@ -250,13 +232,13 @@ def main(args):
                     }, step=(epoch + 1) * len(train_dataloader) - 1)
             
             valid_loss = sum(losses) / len(losses)
-            mean_dice = sum(dice_scores) / len(dice_scores)  # Average Dice Score
+            mean_dice_scores = torch.tensor(all_dice_scores).mean(dim=0).tolist() #dice
+            overall_mean_dice = sum(mean_dice_scores) / 19 #dice
             print(f"Logging to W&B: valid_loss={valid_loss}, dice_score={mean_dice}")
             wandb.log({
                 "valid_loss": valid_loss,
-            }, step=(epoch + 1) * len(train_dataloader) - 1)
-            wandb.log({
-                "dice_score": mean_dice,  # Log Dice Score
+                "mean_dice_score": overall_mean_dice, #dice
+                **{f"dice_class_{i}": score for i, score in enumerate(mean_dice_scores)} #dice
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
             if valid_loss < best_valid_loss:
@@ -269,15 +251,15 @@ def main(args):
                 )
                 torch.save(model.state_dict(), current_best_model_path)
 
-            if mean_dice < best_dice:
-                best_dice = mean_dice
-                if current_best_dice_path:
-                    os.remove(current_best_dice_path)
-                current_best_dice_path = os.path.join(
-                    output_dir, 
-                    f"best_model-epoch={epoch:04}-val_loss={mean_dice:04}.pth"
-                )
-                torch.save(model.state_dict(), current_best_dice_path)
+            # if mean_dice < best_dice:
+            #     best_dice = mean_dice
+            #     if current_best_dice_path:
+            #         os.remove(current_best_dice_path)
+            #     current_best_dice_path = os.path.join(
+            #         output_dir, 
+            #         f"best_model-epoch={epoch:04}-val_loss={mean_dice:04}.pth"
+            #     )
+            #     torch.save(model.state_dict(), current_best_dice_path)
         
     print("Training complete!")
 
