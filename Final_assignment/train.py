@@ -18,6 +18,7 @@ from argparse import ArgumentParser
 import wandb
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
@@ -68,16 +69,41 @@ def get_args_parser():
 
     return parser
 
-def dice_score(preds, targets, eps=1e-6):
-    """Computes the Dice Score"""
-    preds = preds.argmax(1)  # Convert logits to class indices
-    preds = preds.view(-1)
-    targets = targets.view(-1)
+# def dice_score(preds, targets, eps=1e-6):
+#     """Computes the Dice Score"""
+#     preds = preds.argmax(1)  # Convert logits to class indices
+#     preds = preds.view(-1)
+#     targets = targets.view(-1)
 
-    intersection = (preds * targets).sum().float()
-    union = preds.sum().float() + targets.sum().float()
+#     intersection = (preds * targets).sum().float()
+#     union = preds.sum().float() + targets.sum().float()
 
-    return (2.0 * intersection + eps) / (union + eps)
+#     return (2.0 * intersection + eps) / (union + eps)
+
+def multiclass_dice_loss(pred, target, smooth=1): #https://medium.com/data-scientists-diary/implementation-of-dice-loss-vision-pytorch-7eef1e438f68
+    """
+    Computes Dice Loss for multi-class segmentation.
+    Args:
+        pred: Tensor of predictions (batch_size, C, H, W).
+        target: One-hot encoded ground truth (batch_size, C, H, W).
+        smooth: Smoothing factor.
+    Returns:
+        Scalar Dice Loss.
+    """
+    pred = F.softmax(pred, dim=1)  # Convert logits to probabilities
+    num_classes = pred.shape[1]  # Number of classes (C)
+    dice = 0  # Initialize Dice loss accumulator
+    
+    for c in range(num_classes):  # Loop through each class
+        pred_c = pred[:, c]  # Predictions for class c
+        target_c = target[:, c]  # Ground truth for class c
+        
+        intersection = (pred_c * target_c).sum(dim=(1, 2))  # Element-wise multiplication
+        union = pred_c.sum(dim=(1, 2)) + target_c.sum(dim=(1, 2))  # Sum of all pixels
+        
+        dice += (2. * intersection + smooth) / (union + smooth)  # Per-class Dice score
+
+    return 1 - dice.mean() / num_classes  # Average Dice Loss across classes
 
 
 def main(args):
@@ -199,7 +225,7 @@ def main(args):
                 losses.append(loss.item())
                 
                 # Compute Dice Score
-                dice = dice_score(outputs.softmax(1), labels)
+                dice = multiclass_dice_loss(outputs.softmax(1), labels)
                 dice_scores.append(dice.item())
                 #
             
@@ -225,8 +251,11 @@ def main(args):
             
             valid_loss = sum(losses) / len(losses)
             mean_dice = sum(dice_scores) / len(dice_scores)  # Average Dice Score
+            print(f"Logging to W&B: valid_loss={valid_loss}, dice_score={mean_dice}")
             wandb.log({
                 "valid_loss": valid_loss,
+            }, step=(epoch + 1) * len(train_dataloader) - 1)
+            wandb.log({
                 "dice_score": mean_dice,  # Log Dice Score
             }, step=(epoch + 1) * len(train_dataloader) - 1)
 
