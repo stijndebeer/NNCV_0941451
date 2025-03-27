@@ -75,15 +75,14 @@ class Model(nn.Module):
         down324a = self.down324a(d23)
         down324 = self.down324b(down324a)
         d34 = torch.cat([d33, down313, down323], dim=1)
-        d34 = self.dconv34(d34)  #correct till here
+        d34 = self.dconv34(d34)
         down334 = self.down334(d33)
         d44 = torch.cat([down314, down324, down334], dim=1)
         d44 = self.dconv44(d44)
         up421 = self.up421(d24)
         up431 = self.up431(d34)
         up441 = self.up441(d44)
-        x = torch.cat([up421, up431, up441, d14], dim=1)
-        print(x.shape)
+        x = torch.cat([up421, up431, up441, d14], dim=1)  #correct till here
 
 
         x = self.convlast(x)
