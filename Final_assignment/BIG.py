@@ -7,15 +7,24 @@ class Model(nn.Module):
         
         super(Model, self).__init__()
 
-        self.dconv11 = (DoubleConv(in_channels, 64))
+        # stem net
+        self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+            
+        self.dconv11 = (DoubleConv(64, 64))
+        #first section
         self.dconv12 = (DoubleConv(64, 64))
         self.down112 = (Down(64, 128))
-        self.dconv21 = (DoubleConv(128, 128))
+        self.dconv22 = (DoubleConv(128, 128))
         self.up221 = (Up(2))
         self.down212 = (Down(64, 128))
         self.down223 = (Down(128, 256))
         self.down213a = (Down(64, 128))
         self.down213b = (Down(128, 256))
+        #second section
         self.dconv13 = (DoubleConv(192, 64))
         self.dconv23 = (DoubleConv(256, 128))
         self.dconv33 = (DoubleConv(512, 256))
@@ -32,6 +41,7 @@ class Model(nn.Module):
         self.down324a = (Down(128, 256))
         self.down324b = (Down(256, 512))
         self.down334 = (Down(256, 512))
+        #third section
         self.dconv14 = (DoubleConv(448, 64))
         self.dconv24 = (DoubleConv(512, 128))
         self.dconv34 = (DoubleConv(768, 256))
@@ -52,6 +62,7 @@ class Model(nn.Module):
         self.down424a = (Down(128, 256))
         self.down424b = (Down(256, 512))
         self.down434 = (Down(256, 512))
+        #fourth section merge to one
         self.dconv15 = (DoubleConv(960, 64))
         self.dconv25 = (DoubleConv(1024, 128))
         self.dconv35 = (DoubleConv(1280, 256))
@@ -62,12 +73,20 @@ class Model(nn.Module):
 
         # self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1)) #first version
         # self.outc = (OutConv(64, n_classes)) #first version
-        self.outc = (nn.Conv2d(960, n_classes, kernel_size=1)) #second version
+        # self.outc = (nn.Conv2d(960, n_classes, kernel_size=1)) #second version
+        self.outc = (OutConv(960, n_classes))
 
     def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
         d11 = self.dconv11(x)
         d12 = self.dconv12(d11)
-        d22 = self.down112(d12)
+        d112 = self.down112(d12)
+        d22 = self.dconv22(d112)
         up221 = self.up221(d22)
         d13 = torch.cat([up221, d12], dim=1)
         d13 = self.dconv13(d13)
@@ -78,6 +97,7 @@ class Model(nn.Module):
         down213a = self.down213a(d12)
         down213 = self.down213b(down213a)
         d33 = torch.cat([down213, down223], dim=1)
+        print(d33.shape)
         d33 = self.dconv33(d33)
         up331 = self.up331(d33)
         up321 = self.up321(d23)
@@ -130,7 +150,9 @@ class Model(nn.Module):
         x = torch.cat([up521, up531, up541, d15], dim=1)
         # x = self.convlast(x) #first version
         # logits = self.outc(x) #first version
-        logits = self.outc(x) #second version
+        # logits = self.outc(x) #second version
+        logits = self.outc(x)
+
 
         return logits
         
@@ -183,7 +205,20 @@ class Up(nn.Module):
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(OutConv, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        self.merge_conv = nn.Sequential(
+        nn.Conv2d(in_channels, in_channels, kernel_size=1),
+        nn.BatchNorm2d(in_channels),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(in_channels, out_channels, kernel_size=1),
+        )
 
     def forward(self, x):
-        return self.conv(x)
+        return self.merge_conv(x)
+
+# class OutConv(nn.Module): #second version
+#     def __init__(self, in_channels, out_channels):
+#         super(OutConv, self).__init__()
+#         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+
+#     def forward(self, x):
+#         return self.conv(x)

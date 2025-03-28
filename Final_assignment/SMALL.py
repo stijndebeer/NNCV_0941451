@@ -10,8 +10,8 @@ class Model(nn.Module):
         self.dconv11 = (DoubleConv(in_channels, 64))
         self.dconv12 = (DoubleConv(64, 64))
         self.down112 = (Down(64, 128))
-        self.dconv21 = (DoubleConv(128, 128))
-        self.up221 = (Up(2)) ## till here it works!
+        self.dconv22 = (DoubleConv(128, 128))
+        self.up221 = (Up(2))
         self.down212 = (Down(64, 128))
         self.down223 = (Down(128, 256))
         self.down213a = (Down(64, 128))
@@ -40,14 +40,16 @@ class Model(nn.Module):
         self.up431 = (Up(4))
         self.up441 = (Up(8))
 
-        # self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1))
-        # self.outc = (OutConv(64, n_classes))
-        self.outc = (nn.Conv2d(960, n_classes, kernel_size=1))
+        # self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1)) #first version
+        # self.outc = (OutConv(64, n_classes))  #first version
+        # self.outc = (nn.Conv2d(960, n_classes, kernel_size=1)) #second version
+        self.outc = (OutConv(960, n_classes))
 
     def forward(self, x):
         d11 = self.dconv11(x)
         d12 = self.dconv12(d11)
-        d22 = self.down112(d12)
+        d112 = self.down112(d12)
+        d22 = self.dconv22(d112)
         up221 = self.up221(d22)
         d13 = torch.cat([up221, d12], dim=1)
         d13 = self.dconv13(d13)
@@ -84,8 +86,9 @@ class Model(nn.Module):
         up431 = self.up431(d34)
         up441 = self.up441(d44)
         x = torch.cat([up421, up431, up441, d14], dim=1)  #correct till here
-        # x = self.convlast(x)
-        # logits = self.outc(x)
+        # x = self.convlast(x)  #first version
+        # logits = self.outc(x)  #first version
+        # logits = self.outc(x) #second version
         logits = self.outc(x)
 
         return logits
@@ -139,7 +142,20 @@ class Up(nn.Module):
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(OutConv, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        self.merge_conv = nn.Sequential(
+        nn.Conv2d(in_channels, in_channels, kernel_size=1),
+        nn.BatchNorm2d(in_channels),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(in_channels, out_channels, kernel_size=1),
+        )
 
     def forward(self, x):
-        return self.conv(x)
+        return self.merge_conv(x)
+
+# class OutConv(nn.Module): #second version
+#     def __init__(self, in_channels, out_channels):
+#         super(OutConv, self).__init__()
+#         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+
+#     def forward(self, x):
+#         return self.conv(x)
