@@ -40,8 +40,9 @@ class Model(nn.Module):
         self.up431 = (Up(4))
         self.up441 = (Up(8))
 
-        self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1))
-        self.outc = (OutConv(64, n_classes))
+        # self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1))
+        # self.outc = (OutConv(64, n_classes))
+        self.outc = (nn.Conv2d(960, n_classes, kernel_size=1))
 
     def forward(self, x):
         d11 = self.dconv11(x)
@@ -83,9 +84,8 @@ class Model(nn.Module):
         up431 = self.up431(d34)
         up441 = self.up441(d44)
         x = torch.cat([up421, up431, up441, d14], dim=1)  #correct till here
-
-
-        x = self.convlast(x)
+        # x = self.convlast(x)
+        # logits = self.outc(x)
         logits = self.outc(x)
 
         return logits
