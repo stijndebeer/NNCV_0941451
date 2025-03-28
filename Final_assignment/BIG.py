@@ -11,7 +11,7 @@ class Model(nn.Module):
         self.dconv12 = (DoubleConv(64, 64))
         self.down112 = (Down(64, 128))
         self.dconv21 = (DoubleConv(128, 128))
-        self.up221 = (Up(2)) ## till here it works!
+        self.up221 = (Up(2))
         self.down212 = (Down(64, 128))
         self.down223 = (Down(128, 256))
         self.down213a = (Down(64, 128))
@@ -60,9 +60,9 @@ class Model(nn.Module):
         self.up531 = (Up(4))
         self.up541 = (Up(8))
 
-        # self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1))
-        # self.outc = (OutConv(64, n_classes))
-        self.outc = (nn.Conv2d(960, n_classes, kernel_size=1))
+        # self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1)) #first version
+        # self.outc = (OutConv(64, n_classes)) #first version
+        self.outc = (nn.Conv2d(960, n_classes, kernel_size=1)) #second version
 
     def forward(self, x):
         d11 = self.dconv11(x)
@@ -128,9 +128,9 @@ class Model(nn.Module):
         up531 = self.up531(d35)
         up541 = self.up541(d45)
         x = torch.cat([up521, up531, up541, d15], dim=1)
-        # x = self.convlast(x)
-        # logits = self.outc(x)
-        logits = self.outc(x)
+        # x = self.convlast(x) #first version
+        # logits = self.outc(x) #first version
+        logits = self.outc(x) #second version
 
         return logits
         
