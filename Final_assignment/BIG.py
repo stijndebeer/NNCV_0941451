@@ -7,7 +7,7 @@ class Model(nn.Module):
         
         super(Model, self).__init__()
 
-        # stem net
+        # stem net reduce computations
         self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1, bias=False)
