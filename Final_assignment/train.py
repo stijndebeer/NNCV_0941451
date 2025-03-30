@@ -30,6 +30,20 @@ from torchvision.transforms.v2 import (
     ToImage,
     ToDtype,
 )
+# from torchvision.transforms.v2 import (
+#     Compose,
+#     Normalize,
+#     Resize,
+#     ToImage,
+#     ToDtype,
+#     RandomHorizontalFlip,
+#     RandomRotation,
+#     ColorJitter,
+#     RandomAffine,
+#     RandomCrop,
+#     RandomPerspective,
+#     GaussianBlur
+# )
 
 from model import Model
 
@@ -116,6 +130,17 @@ def main(args):
         ToDtype(torch.float32, scale=True),
         Normalize((0.5,), (0.5,)),
     ])
+    # transform = Compose([
+    #     ToImage(),
+    #     RandomHorizontalFlip(p=0.5), #left-right variation
+    #     RandomRotation(degrees=15), #rotation
+    #     ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), #color variation
+    #     RandomCrop((256, 256), pad_if_needed=True), #random crop
+    #     RandomPerspective(distortion_scale=0.2, p=0.5), #random perspective
+    #     GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)), #blur
+    #     ToDtype(torch.float32, scale=True), # Convert to float32 and scale to [0, 1]
+    #     Normalize((0.5,), (0.5,)), # Normalize to [-1, 1]
+    # ])
 
     # Load the dataset and make a split for training and validation
     train_dataset = Cityscapes(
