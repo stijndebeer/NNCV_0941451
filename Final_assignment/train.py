@@ -20,30 +20,30 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import AdamW
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
-from torchvision.transforms.v2 import (
-    Compose,
-    Normalize,
-    Resize,
-    ToImage,
-    ToDtype,
-)
 # from torchvision.transforms.v2 import (
 #     Compose,
 #     Normalize,
 #     Resize,
 #     ToImage,
 #     ToDtype,
-#     RandomHorizontalFlip,
-#     RandomRotation,
-#     ColorJitter,
-#     RandomAffine,
-#     RandomCrop,
-#     RandomPerspective,
-#     GaussianBlur
 # )
+from torchvision.transforms.v2 import (
+    Compose,
+    Normalize,
+    Resize,
+    ToImage,
+    ToDtype,
+    RandomHorizontalFlip,
+    RandomRotation,
+    ColorJitter,
+    RandomAffine,
+    RandomCrop,
+    RandomPerspective,
+    GaussianBlur
+)
 
 from model import Model
 
@@ -123,40 +123,53 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Define the transforms to apply to the data
+    # Define transforms for training (with augmentations)
+    train_transform = Compose([
+        ToImage(),
+        RandomCrop((256, 256), pad_if_needed=True),  # Random crop with padding
+        RandomHorizontalFlip(p=0.5),  # Left-right flip
+        RandomRotation(degrees=15),  # Small random rotations
+        # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
+        # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
+        # GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),  # Apply Gaussian blur
+        ToDtype(torch.float32, scale=True),  # Convert to float32 and scale to [0, 1]
+        Normalize((0.5,), (0.5,)),  # Normalize to [-1, 1]
+    ])
+
+    # Define transforms for validation (no augmentations)
     transform = Compose([
         ToImage(),
         Resize((256, 256)),
         ToDtype(torch.float32, scale=True),
         Normalize((0.5,), (0.5,)),
     ])
-    # transform = Compose([
-    #     ToImage(),
-    #     RandomHorizontalFlip(p=0.5), #left-right variation
-    #     RandomRotation(degrees=15), #rotation
-    #     ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1), #color variation
-    #     RandomCrop((256, 256), pad_if_needed=True), #random crop
-    #     RandomPerspective(distortion_scale=0.2, p=0.5), #random perspective
-    #     GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)), #blur
-    #     ToDtype(torch.float32, scale=True), # Convert to float32 and scale to [0, 1]
-    #     Normalize((0.5,), (0.5,)), # Normalize to [-1, 1]
-    # ])
 
-    # Load the dataset and make a split for training and validation
+    # Load datasets
     train_dataset = Cityscapes(
+        args.data_dir, 
+        split="train", 
+        mode="fine", 
+        target_type="semantic", 
+        transforms=train_transform
+    )
+    train_dataset_validform = Cityscapes(
         args.data_dir, 
         split="train", 
         mode="fine", 
         target_type="semantic", 
         transforms=transform
     )
+
     valid_dataset = Cityscapes(
         args.data_dir, 
         split="val", 
         mode="fine", 
         target_type="semantic", 
-        transforms=transform
+        transforms=transform  # No augmentation for validation
     )
+
+    # Wrap datasets
+    train_dataset = ConcatDataset([train_dataset, train_dataset_validform])
 
     train_dataset = wrap_dataset_for_transforms_v2(train_dataset)
     valid_dataset = wrap_dataset_for_transforms_v2(valid_dataset)
