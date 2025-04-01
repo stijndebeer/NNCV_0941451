@@ -127,8 +127,8 @@ def main(args):
     # Define transforms for training (with augmentations)
     train_transform = Compose([
         ToImage(),
+            RandomCrop((256, 256), pad_if_needed=True), # Random crop with padding
         RandomApply([
-            RandomCrop((256, 256), pad_if_needed=True),  # Random crop with padding
             RandomHorizontalFlip(p=0.5),  # Left-right flip
             RandomRotation(degrees=15),  # Small random rotations
             # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
