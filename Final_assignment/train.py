@@ -145,7 +145,7 @@ def main(args):
         Normalize((0.5,), (0.5,)),
     ])
 
-    final_transform = ProbabilisticTransform(train_transform, transform, prob=0.3)
+    final_transform = probabilistic_transform(train_transform, transform, prob=0.3)
 
     # Load datasets
     train_dataset = Cityscapes(
