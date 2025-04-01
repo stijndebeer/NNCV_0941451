@@ -19,8 +19,9 @@ import wandb
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import random
 from torch.optim import AdamW
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
 from torchvision.transforms.v2 import (
@@ -29,6 +30,14 @@ from torchvision.transforms.v2 import (
     Resize,
     ToImage,
     ToDtype,
+    RandomHorizontalFlip,
+    RandomRotation,
+    RandomApply,
+    ColorJitter,
+    RandomAffine,
+    RandomCrop,
+    RandomPerspective,
+    GaussianBlur
 )
 
 from model import Model
@@ -86,7 +95,10 @@ def dice_score(preds, labels, num_classes, epsilon=1e-6):
     mean_dice = sum(dice_per_class) / num_classes
     return dice_per_class, mean_dice
 
-
+def probabilistic_transform(train_transform, normal_transform, train_prob=0.3):
+    if random.random() < train_prob:
+        return train_transform
+    return normal_transform
 
 def main(args):
     # Initialize wandb for logging
@@ -109,7 +121,23 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Define the transforms to apply to the data
+    # Define transforms for training (with augmentations)
+    train_transform = Compose([
+        ToImage(),
+        # Resize((256, 256)),
+        RandomCrop((256, 256), pad_if_needed=True), # Random crop with padding
+        RandomApply([
+            RandomHorizontalFlip(p=0.5),  # Left-right flip
+            RandomRotation(degrees=15),  # Small random rotations
+            # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
+            # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
+            GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),  # Apply Gaussian blur
+        ], p=0.5),
+        ToDtype(torch.float32, scale=True),  # Convert to float32 and scale to [0, 1]
+        Normalize((0.5,), (0.5,)),  # Normalize to [-1, 1]
+    ])
+
+    # Define transforms for validation (no augmentations)
     transform = Compose([
         ToImage(),
         Resize((256, 256)),
@@ -117,21 +145,24 @@ def main(args):
         Normalize((0.5,), (0.5,)),
     ])
 
-    # Load the dataset and make a split for training and validation
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.3)
+
+    # Load datasets
     train_dataset = Cityscapes(
         args.data_dir, 
         split="train", 
         mode="fine", 
         target_type="semantic", 
-        transforms=transform
+        transforms=final_transform
     )
     valid_dataset = Cityscapes(
         args.data_dir, 
         split="val", 
         mode="fine", 
         target_type="semantic", 
-        transforms=transform
+        transforms=transform  # No augmentation for validation
     )
+    
 
     train_dataset = wrap_dataset_for_transforms_v2(train_dataset)
     valid_dataset = wrap_dataset_for_transforms_v2(valid_dataset)
