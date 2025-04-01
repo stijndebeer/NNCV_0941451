@@ -38,6 +38,7 @@ from torchvision.transforms.v2 import (
     ToDtype,
     RandomHorizontalFlip,
     RandomRotation,
+    RandomApply,
     ColorJitter,
     RandomAffine,
     RandomCrop,
@@ -126,12 +127,14 @@ def main(args):
     # Define transforms for training (with augmentations)
     train_transform = Compose([
         ToImage(),
-        RandomCrop((256, 256), pad_if_needed=True),  # Random crop with padding
-        RandomHorizontalFlip(p=0.5),  # Left-right flip
-        RandomRotation(degrees=15),  # Small random rotations
-        # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
-        # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
-        # GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),  # Apply Gaussian blur
+        RandomApply([
+            RandomCrop((256, 256), pad_if_needed=True),  # Random crop with padding
+            RandomHorizontalFlip(p=0.5),  # Left-right flip
+            RandomRotation(degrees=15),  # Small random rotations
+            # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
+            # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
+            # GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),  # Apply Gaussian blur
+        ], p=0.5),
         ToDtype(torch.float32, scale=True),  # Convert to float32 and scale to [0, 1]
         Normalize((0.5,), (0.5,)),  # Normalize to [-1, 1]
     ])
@@ -152,14 +155,6 @@ def main(args):
         target_type="semantic", 
         transforms=train_transform
     )
-    train_dataset_validform = Cityscapes(
-        args.data_dir, 
-        split="train", 
-        mode="fine", 
-        target_type="semantic", 
-        transforms=transform
-    )
-
     valid_dataset = Cityscapes(
         args.data_dir, 
         split="val", 
@@ -167,9 +162,6 @@ def main(args):
         target_type="semantic", 
         transforms=transform  # No augmentation for validation
     )
-
-    # Wrap datasets
-    train_dataset = ConcatDataset([train_dataset, train_dataset_validform])
 
     train_dataset = wrap_dataset_for_transforms_v2(train_dataset)
     valid_dataset = wrap_dataset_for_transforms_v2(valid_dataset)
