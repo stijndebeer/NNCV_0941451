@@ -95,10 +95,10 @@ def dice_score(preds, labels, num_classes, epsilon=1e-6):
     mean_dice = sum(dice_per_class) / num_classes
     return dice_per_class, mean_dice
 
-def probabilistic_transform(image, train_transform, normal_transform, train_prob=0.3):
+def probabilistic_transform(train_transform, normal_transform, train_prob=0.3):
     if random.random() < train_prob:
-        return train_transform(image)
-    return normal_transform(image)
+        return train_transform
+    return normal_transform
 
 def main(args):
     # Initialize wandb for logging
@@ -145,7 +145,7 @@ def main(args):
         Normalize((0.5,), (0.5,)),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, prob=0.3)
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.3)
 
     # Load datasets
     train_dataset = Cityscapes(
