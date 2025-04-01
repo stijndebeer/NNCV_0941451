@@ -95,17 +95,10 @@ def dice_score(preds, labels, num_classes, epsilon=1e-6):
     mean_dice = sum(dice_per_class) / num_classes
     return dice_per_class, mean_dice
 
-class ProbabilisticTransform:
-    def __init__(self, train_transform, normal_transform, prob=0.3):
-        self.train_transform = train_transform
-        self.normal_transform = normal_transform
-        self.prob = prob
-
-    def __call__(self, x):
-        if random.random() < self.prob:
-            return self.train_transform(x)
-        else:
-            return self.normal_transform(x)
+def probabilistic_transform(image, train_transform, normal_transform, train_prob=0.3):
+    if random.random() < train_prob:
+        return train_transform(image)
+    return normal_transform(image)
 
 def main(args):
     # Initialize wandb for logging
