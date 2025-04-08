@@ -6,68 +6,75 @@ class Model(nn.Module):
     def __init__(self, in_channels=3, n_classes=19):
         
         super(Model, self).__init__()
-
-        self.dconv11 = (DoubleConv(in_channels, 64))
-        self.dconv12 = (DoubleConv(64, 64))
-        self.down112 = (Down(64, 128))
-        self.dconv21 = (DoubleConv(128, 128))
-        self.up221 = (Up(2))
-        self.down212 = (Down(64, 128))
-        self.down223 = (Down(128, 256))
-        self.down213a = (Down(64, 128))
-        self.down213b = (Down(128, 256))
-        self.dconv13 = (DoubleConv(192, 64))
-        self.dconv23 = (DoubleConv(256, 128))
-        self.dconv33 = (DoubleConv(512, 256))
-        self.up321 = (Up(2))
-        self.up331 = (Up(4))
-        self.up332 = (Up(2))
-        self.down312 = (Down(64, 128))
-        self.down313a = (Down(64, 128))
-        self.down313b = (Down(128, 256))
-        self.down314a = (Down(64, 128))
-        self.down314b = (Down(128, 256))
-        self.down314c = (Down(256, 512))
-        self.down323 = (Down(128, 256))
-        self.down324a = (Down(128, 256))
-        self.down324b = (Down(256, 512))
-        self.down334 = (Down(256, 512))
-        self.dconv14 = (DoubleConv(448, 64))
-        self.dconv24 = (DoubleConv(512, 128))
-        self.dconv34 = (DoubleConv(768, 256))
-        self.dconv44 = (DoubleConv(1536, 512))
-        self.up421 = (Up(2))
-        self.up431 = (Up(4))
-        self.up441 = (Up(8))
-        self.up432 = (Up(2))
-        self.up442 = (Up(4))
-        self.up443 = (Up(2))
-        self.down412 = (Down(64, 128))
-        self.down413a = (Down(64, 128))
-        self.down413b = (Down(128, 256))
-        self.down414a = (Down(64, 128))
-        self.down414b = (Down(128, 256))
-        self.down414c = (Down(256, 512))
-        self.down423 = (Down(128, 256))
-        self.down424a = (Down(128, 256))
-        self.down424b = (Down(256, 512))
-        self.down434 = (Down(256, 512))
-        self.dconv15 = (DoubleConv(960, 64))
-        self.dconv25 = (DoubleConv(1024, 128))
-        self.dconv35 = (DoubleConv(1280, 256))
-        self.dconv45 = (DoubleConv(2048, 512))
-        self.up521 = (Up(2))
-        self.up531 = (Up(4))
-        self.up541 = (Up(8))
-
-        # self.convlast = (nn.Conv2d(960, 64, kernel_size=3, padding=1)) #first version
-        # self.outc = (OutConv(64, n_classes)) #first version
-        self.outc = (nn.Conv2d(960, n_classes, kernel_size=1)) #second version
+        self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)           
+        self.dconv11 = Tripleres4(64, 64)
+        #first section
+        self.dconv12 = Doubleres4(64, 64)
+        self.down112 = Down(64, 128)
+        self.dconv22 = Doubleres4(128, 128)
+        self.up221 = Up(2)
+        self.down212 = Down(64, 128)
+        self.down223 = Down(128, 256)
+        self.down213a = Down(64, 128)
+        self.down213b = Down(128, 256)
+        #second section
+        self.dconv13 = Doubleres4(192, 64, 1)
+        self.dconv23 = Doubleres4(256, 128, 1)
+        self.dconv33 = Doubleres4(512, 256, 1)
+        self.up321 = Up(2)
+        self.up331 = Up(4)
+        self.up332 = Up(2)
+        self.down312 = Down(64, 128)
+        self.down313a = Down(64, 128)
+        self.down313b = Down(128, 256)
+        self.down314a = Down(64, 128)
+        self.down314b = Down(128, 256)
+        self.down314c = Down(256, 512)
+        self.down323 = Down(128, 256)
+        self.down324a = Down(128, 256)
+        self.down324b = Down(256, 512)
+        self.down334 = Down(256, 512)
+        #third section
+        self.dconv14 = Doubleres4(448, 64, 1)
+        self.dconv24 = Doubleres4(512, 128, 1)
+        self.dconv34 = Doubleres4(768, 256, 1)
+        self.dconv44 = Doubleres4(1536, 512, 1)
+        self.up421 = Up(2)
+        self.up431 = Up(4)
+        self.up441 = Up(8)
+        self.up432 = Up(2)
+        self.up442 = Up(4)
+        self.up443 = Up(2)
+        self.down412 = Down(64, 128)
+        self.down413a = Down(64, 128)
+        self.down413b = Down(128, 256)
+        self.down414a = Down(64, 128)
+        self.down414b = Down(128, 256)
+        self.down414c = Down(256, 512)
+        self.down423 = Down(128, 256)
+        self.down424a = Down(128, 256)
+        self.down424b = Down(256, 512)
+        self.down434 = Down(256, 512)
+        #fourth section merge to one
+        self.dconv15 = Doubleres4(960, 64, 1)
+        self.dconv25 = Doubleres4(1024, 128, 1)
+        self.dconv35 = Doubleres4(1280, 256, 1)
+        self.dconv45 = Doubleres4(2048, 512, 1)
+        self.up521 = Up(2)
+        self.up531 = Up(4)
+        self.up541 = Up(8)
+        self.outc = (OutConv(960, n_classes))
 
     def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
         d11 = self.dconv11(x)
         d12 = self.dconv12(d11)
-        d22 = self.down112(d12)
+        d112 = self.down112(d12)
+        d22 = self.dconv22(d112)
         up221 = self.up221(d22)
         d13 = torch.cat([up221, d12], dim=1)
         d13 = self.dconv13(d13)
@@ -128,32 +135,105 @@ class Model(nn.Module):
         up531 = self.up531(d35)
         up541 = self.up541(d45)
         x = torch.cat([up521, up531, up541, d15], dim=1)
-        # x = self.convlast(x) #first version
-        # logits = self.outc(x) #first version
-        logits = self.outc(x) #second version
+        logits = self.outc(x)
 
         return logits
         
 
-class DoubleConv(nn.Module):
+class Doubleres(nn.Module): #basically a resnet block
     """(convolution => [BN] => ReLU) * 2"""
 
-    def __init__(self, in_channels, out_channels, mid_channels=None):
+    def __init__(self, in_channels, out_channels, downsample=None):
         super().__init__()
-        if not mid_channels:
-            mid_channels = out_channels
-        self.double_conv = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(mid_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.downsample = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels)
         )
 
     def forward(self, x):
-        return self.double_conv(x)
+        residual = x
+        if self.downsample is not None:
+            residual = self.downsample(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = x + residual
+        x = self.relu(x)
+        return x
+    
+class Tripleres(nn.Module): #basically a resnet block
+    """(convolution => [BN] => ReLU) * 2"""
 
+    def __init__(self, in_channels, out_channels, downsample=None):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(out_channels)
+        self.downsample = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels)
+        )
+
+    def forward(self, x):
+        residual = x
+        if self.downsample is not None:
+            residual = self.downsample(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu(x)
+        x = self.conv3(x)
+        x = self.bn3(x)
+        x = x + residual
+        x = self.relu(x)
+        return x
+
+class Doubleres4(nn.Module): #basically 4 resnetblock is series
+    """(convolution => [BN] => ReLU) * 4"""
+
+    def __init__(self, in_channels, out_channels, downsample=None):
+        super().__init__()
+        #sequential with 4 doubleres blocks
+        self.four_doubleres = nn.Sequential(
+            Doubleres(in_channels, out_channels),
+            Doubleres(out_channels, out_channels),
+            Doubleres(out_channels, out_channels),
+            Doubleres(out_channels, out_channels)
+        )
+
+    def forward(self, x):
+            
+        return self.four_doubleres(x)
+    
+class Tripleres4(nn.Module): #basically 4 resnetblock is series
+    """(convolution => [BN] => ReLU) * 4"""
+
+    def __init__(self, in_channels, out_channels, downsample=None):
+        super().__init__()
+        #sequential with 4 doubleres blocks
+        self.four_tripleres = nn.Sequential(
+            Tripleres(in_channels, out_channels),
+            Tripleres(out_channels, out_channels),
+            Tripleres(out_channels, out_channels),
+            Tripleres(out_channels, out_channels)
+        )
+
+    def forward(self, x):
+            
+        return self.four_tripleres(x)    
 
 class Down(nn.Module):
     """Downscaling with maxpool then conv"""
@@ -161,8 +241,7 @@ class Down(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
-            nn.MaxPool2d(2),
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=False)
         )
 
     def forward(self, x):
@@ -183,7 +262,12 @@ class Up(nn.Module):
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(OutConv, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        self.merge_conv = nn.Sequential(
+        nn.Conv2d(in_channels, in_channels, kernel_size=1),
+        nn.BatchNorm2d(in_channels),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(in_channels, out_channels, kernel_size=1),
+        )
 
     def forward(self, x):
-        return self.conv(x)
+        return self.merge_conv(x)
