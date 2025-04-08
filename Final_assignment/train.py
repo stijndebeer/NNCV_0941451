@@ -21,6 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import random
 from torch.optim import AdamW
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, ConcatDataset
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
@@ -75,6 +76,11 @@ def get_args_parser():
     parser.add_argument("--num-workers", type=int, default=10, help="Number of workers for data loaders")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument("--experiment-id", type=str, default="unet-training", help="Experiment ID for Weights & Biases")
+
+    # ReduceLROnPlateau
+    parser.add_argument("--lr-patience", type=int, default=3, help="Epochs with no improvement before reducing LR")
+    parser.add_argument("--lr-factor", type=float, default=0.5, help="Factor to reduce LR by")
+    parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
     return parser
 
@@ -191,12 +197,20 @@ def main(args):
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
+    
+    # Define the scheduler
+    scheduler = ReduceLROnPlateau(
+        optimizer,
+        mode='min',
+        factor=args.lr_factor,
+        patience=args.lr_patience,
+        verbose=True,
+        min_lr=args.lr_min
+    )
 
     # Training loop
     best_valid_loss = float('inf')
-    # best_dice = float('inf')
     current_best_model_path = None
-    # current_best_dice_path = None
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1:04}/{args.epochs:04}")
 
@@ -206,7 +220,6 @@ def main(args):
 
             labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
             images, labels = images.to(device), labels.to(device)
-
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
             optimizer.zero_grad()
@@ -230,7 +243,6 @@ def main(args):
 
                 labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
                 images, labels = images.to(device), labels.to(device)
-
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 outputs = model(images)
@@ -244,10 +256,8 @@ def main(args):
             
                 if i == 0:
                     predictions = outputs.softmax(1).argmax(1)
-
                     predictions = predictions.unsqueeze(1)
                     labels = labels.unsqueeze(1)
-
                     predictions = convert_train_id_to_color(predictions)
                     labels = convert_train_id_to_color(labels)
 
@@ -271,7 +281,9 @@ def main(args):
                 "mean_dice_score": overall_mean_dice, #dice
                 # **{f"dice_class_{i}": score for i, score in enumerate(mean_dice_scores)} #dice per class
             }, step=(epoch + 1) * len(train_dataloader) - 1)
-
+            
+            scheduler.step(valid_loss)
+            
             if valid_loss < best_valid_loss:
                 best_valid_loss = valid_loss
                 if current_best_model_path:
@@ -281,16 +293,6 @@ def main(args):
                     f"best_model-epoch={epoch:04}-val_loss={valid_loss:04}.pth"
                 )
                 torch.save(model.state_dict(), current_best_model_path)
-
-            # if mean_dice < best_dice:
-            #     best_dice = mean_dice
-            #     if current_best_dice_path:
-            #         os.remove(current_best_dice_path)
-            #     current_best_dice_path = os.path.join(
-            #         output_dir, 
-            #         f"best_model-epoch={epoch:04}-val_loss={mean_dice:04}.pth"
-            #     )
-            #     torch.save(model.state_dict(), current_best_dice_path)
         
     print("Training complete!")
 
