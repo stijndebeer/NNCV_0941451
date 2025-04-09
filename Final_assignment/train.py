@@ -78,7 +78,7 @@ def get_args_parser():
     parser.add_argument("--experiment-id", type=str, default="unet-training", help="Experiment ID for Weights & Biases")
 
     # ReduceLROnPlateau
-    parser.add_argument("--lr-patience", type=int, default=3, help="Epochs with no improvement before reducing LR")
+    parser.add_argument("--lr-patience", type=int, default=5, help="Epochs with no improvement before reducing LR")
     parser.add_argument("--lr-factor", type=float, default=0.5, help="Factor to reduce LR by")
     parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
@@ -101,7 +101,7 @@ def dice_score(preds, labels, num_classes, epsilon=1e-6):
     mean_dice = sum(dice_per_class) / num_classes
     return dice_per_class, mean_dice
 
-def probabilistic_transform(train_transform, normal_transform, train_prob=0.3):
+def probabilistic_transform(train_transform, normal_transform, train_prob=0.4):
     if random.random() < train_prob:
         return train_transform
     return normal_transform
@@ -282,7 +282,7 @@ def main(args):
                 # **{f"dice_class_{i}": score for i, score in enumerate(mean_dice_scores)} #dice per class
             }, step=(epoch + 1) * len(train_dataloader) - 1)
             
-            scheduler.step(valid_loss)
+            #scheduler.step(valid_loss)
             
             if valid_loss < best_valid_loss:
                 best_valid_loss = valid_loss

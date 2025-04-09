@@ -7,4 +7,4 @@ python3 train.py \
     --lr 0.001 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "actual_enorm_resnet_coupled_nostem_adj_trainloss" \
+    --experiment-id "enorm_resnetbott_coupled_nostem" \
