@@ -24,7 +24,6 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, ConcatDataset
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
-from torch.cuda.amp import GradScaler, autocast
 from torchvision.utils import make_grid
 from torchvision.transforms.v2 import (
     Compose,
@@ -238,7 +237,7 @@ def main(args):
     model = Model(
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
-    ).to(device).cuda()
+    ).to(device)
 
     # Load pre-trained weights
     weights_path = os.path.join("weights", "model.pth")
@@ -265,10 +264,6 @@ def main(args):
         min_lr=args.lr_min
     )
 
-    
-    # Initialize GradScaler for mixed precision training
-    scaler = torch.amp.GradScaler()
-
     # Training loop
     best_valid_loss = float('inf')
     current_best_model_path = None
@@ -284,15 +279,10 @@ def main(args):
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
             optimizer.zero_grad()
-            # Mixed precision forward pass
-            with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
-                main_out, aux_out = model(images)
-                loss = criterion(main_out, aux_out, labels)
-
-            # Backward pass with scaled gradients
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            main_out, aux_out = model(images)
+            loss = criterion(main_out, aux_out, labels)
+            loss.backward()
+            optimizer.step()
 
             wandb.log({
                 "train_loss": loss.item(),
@@ -311,10 +301,8 @@ def main(args):
                 images, labels = images.to(device), labels.to(device)
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                # Mixed precision forward pass
-                with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
-                    output, ocr_output = model(images)
-                    loss = criterion(output, ocr_output, labels)
+                output, ocr_output = model(images)
+                loss = criterion(output, ocr_output, labels)
                 losses.append(loss.item())
                 
                 # Compute Dice Score
