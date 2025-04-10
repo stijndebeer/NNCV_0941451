@@ -180,8 +180,8 @@ def main(args):
         ToImage(),
         # Resize((256, 256)),
         RandomCrop((256, 256), pad_if_needed=True), # Random crop with padding
-            RandomHorizontalFlip(p=0.5),  # Left-right flip
-            RandomRotation(degrees=10),  # Small random rotations
+        RandomHorizontalFlip(p=0.5),  # Left-right flip
+        RandomRotation(degrees=10),  # Small random rotations
         RandomApply([
             # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
             # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
@@ -312,7 +312,7 @@ def main(args):
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
                 # Mixed precision forward pass
-                with torch.amp.autocast():
+                with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
                     output, ocr_output = model(images)
                     loss = criterion(output, ocr_output, labels)
                 losses.append(loss.item())
