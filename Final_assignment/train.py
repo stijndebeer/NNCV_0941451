@@ -24,6 +24,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, ConcatDataset
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
+from torch.cuda.amp import GradScaler, autocast
 from torchvision.utils import make_grid
 from torchvision.transforms.v2 import (
     Compose,
@@ -179,13 +180,13 @@ def main(args):
         ToImage(),
         # Resize((256, 256)),
         RandomCrop((256, 256), pad_if_needed=True), # Random crop with padding
-        RandomApply([
             RandomHorizontalFlip(p=0.5),  # Left-right flip
-            RandomRotation(degrees=15),  # Small random rotations
+            RandomRotation(degrees=10),  # Small random rotations
+        RandomApply([
             # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
             # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
             GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),  # Apply Gaussian blur
-        ], p=0.9),
+        ], p=0.3),
         ToDtype(torch.float32, scale=True),  # Convert to float32 and scale to [0, 1]
         Normalize((0.5,), (0.5,)),  # Normalize to [-1, 1]
     ])
@@ -237,7 +238,7 @@ def main(args):
     model = Model(
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
-    ).to(device)
+    ).to(device).cuda()
 
     # Load pre-trained weights
     weights_path = os.path.join("weights", "model.pth")
@@ -264,6 +265,10 @@ def main(args):
         min_lr=args.lr_min
     )
 
+    
+    # Initialize GradScaler for mixed precision training
+    scaler = torch.amp.GradScaler()
+
     # Training loop
     best_valid_loss = float('inf')
     current_best_model_path = None
@@ -279,10 +284,15 @@ def main(args):
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
             optimizer.zero_grad()
-            main_out, aux_out = model(images)
-            loss = criterion(main_out, aux_out, labels)
-            loss.backward()
-            optimizer.step()
+            # Mixed precision forward pass
+            with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
+                main_out, aux_out = model(images)
+                loss = criterion(main_out, aux_out, labels)
+
+            # Backward pass with scaled gradients
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             wandb.log({
                 "train_loss": loss.item(),
@@ -301,17 +311,19 @@ def main(args):
                 images, labels = images.to(device), labels.to(device)
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                main_output, ocr_output = model(images)
-                loss = criterion(main_output, ocr_output, labels)
+                # Mixed precision forward pass
+                with torch.amp.autocast():
+                    output, ocr_output = model(images)
+                    loss = criterion(output, ocr_output, labels)
                 losses.append(loss.item())
                 
                 # Compute Dice Score
-                dice_scores, mean_dice = dice_score(main_output.softmax(1).argmax(1), labels, 19)
+                dice_scores, mean_dice = dice_score(output.softmax(1).argmax(1), labels, 19)
                 all_dice_scores.append(dice_scores)
                 #
             
                 if i == 0:
-                    predictions = main_output.softmax(1).argmax(1)
+                    predictions = output.softmax(1).argmax(1)
                     predictions = predictions.unsqueeze(1)
                     labels = labels.unsqueeze(1)
                     predictions = convert_train_id_to_color(predictions)
