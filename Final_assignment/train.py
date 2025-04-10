@@ -56,29 +56,29 @@ class CombinedOCRLoss(nn.Module):
 
     def forward(self, main_output, aux_output, targets):
         ce_loss = self.cross_entropy(main_output, targets)
-        dice_loss = self._dice_loss(main_output, targets)
+        # dice_loss = self._dice_loss(main_output, targets)
         aux_loss = self.cross_entropy(aux_output, targets)
 
         total_loss = (
             self.weight_ce * ce_loss +
-            self.weight_dice * dice_loss +
+            # self.weight_dice * dice_loss +
             self.weight_aux * aux_loss
         )
         return total_loss
 
-    def _dice_loss(self, outputs, targets, epsilon=1e-6):
-        probs = torch.softmax(outputs, dim=1)
-        one_hot_targets = F.one_hot(targets, num_classes=self.num_classes).permute(0, 3, 1, 2).float()
+    # def _dice_loss(self, outputs, targets, epsilon=1e-6):
+    #     probs = torch.softmax(outputs, dim=1)
+    #     one_hot_targets = F.one_hot(targets, num_classes=self.num_classes).permute(0, 3, 1, 2).float()
 
-        if self.ignore_index is not None:
-            mask = (targets != self.ignore_index).unsqueeze(1)
-            probs = probs * mask
-            one_hot_targets = one_hot_targets * mask
+    #     if self.ignore_index is not None:
+    #         mask = (targets != self.ignore_index).unsqueeze(1)
+    #         probs = probs * mask
+    #         one_hot_targets = one_hot_targets * mask
 
-        intersection = (probs * one_hot_targets).sum(dim=(2, 3))
-        union = probs.sum(dim=(2, 3)) + one_hot_targets.sum(dim=(2, 3))
-        dice = (2 * intersection + epsilon) / (union + epsilon)
-        return 1 - dice.mean()
+    #     intersection = (probs * one_hot_targets).sum(dim=(2, 3))
+    #     union = probs.sum(dim=(2, 3)) + one_hot_targets.sum(dim=(2, 3))
+    #     dice = (2 * intersection + epsilon) / (union + epsilon)
+    #     return 1 - dice.mean()
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
