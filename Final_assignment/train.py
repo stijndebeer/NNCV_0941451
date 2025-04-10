@@ -43,6 +43,42 @@ from torchvision.transforms.v2 import (
 
 from model import Model
 
+class CombinedOCRLoss(nn.Module):
+    def __init__(self, weight_ce=1.0, weight_dice=1.0, weight_ocr=1.0, weight_aux=0.4, num_classes=19, ignore_index=255):
+        super().__init__()
+        self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
+        self.weight_ce = weight_ce
+        self.weight_dice = weight_dice
+        self.weight_ocr = weight_ocr
+        self.weight_aux = weight_aux
+        self.num_classes = num_classes
+        self.ignore_index = ignore_index
+
+    def forward(self, main_output, aux_output, targets):
+        ce_loss = self.cross_entropy(main_output, targets)
+        dice_loss = self._dice_loss(main_output, targets)
+        aux_loss = self.cross_entropy(aux_output, targets)
+
+        total_loss = (
+            self.weight_ce * ce_loss +
+            self.weight_dice * dice_loss +
+            self.weight_aux * aux_loss
+        )
+        return total_loss
+
+    def _dice_loss(self, outputs, targets, epsilon=1e-6):
+        probs = torch.softmax(outputs, dim=1)
+        one_hot_targets = F.one_hot(targets, num_classes=self.num_classes).permute(0, 3, 1, 2).float()
+
+        if self.ignore_index is not None:
+            mask = (targets != self.ignore_index).unsqueeze(1)
+            probs = probs * mask
+            one_hot_targets = one_hot_targets * mask
+
+        intersection = (probs * one_hot_targets).sum(dim=(2, 3))
+        union = probs.sum(dim=(2, 3)) + one_hot_targets.sum(dim=(2, 3))
+        dice = (2 * intersection + epsilon) / (union + epsilon)
+        return 1 - dice.mean()
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -193,7 +229,8 @@ def main(args):
     ).to(device)
 
     # Define the loss function
-    criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
+    # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
+    criterion = CombinedOCRLoss(weight_ce=1.0, weight_dice=1.0, weight_ocr=1.0, num_classes=19, ignore_index=255)
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
@@ -223,8 +260,8 @@ def main(args):
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
             optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
+            main_out, aux_out = model(images)
+            loss = criterion(main_out, aux_out, labels)
             loss.backward()
             optimizer.step()
 
@@ -245,17 +282,17 @@ def main(args):
                 images, labels = images.to(device), labels.to(device)
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                outputs = model(images)
-                loss = criterion(outputs, labels)
+                main_output, ocr_output = model(images)
+                loss = criterion(main_output, ocr_output, labels)
                 losses.append(loss.item())
                 
                 # Compute Dice Score
-                dice_scores, mean_dice = dice_score(outputs.softmax(1).argmax(1), labels, 19)
+                dice_scores, mean_dice = dice_score(main_output.softmax(1).argmax(1), labels, 19)
                 all_dice_scores.append(dice_scores)
                 #
             
                 if i == 0:
-                    predictions = outputs.softmax(1).argmax(1)
+                    predictions = main_output.softmax(1).argmax(1)
                     predictions = predictions.unsqueeze(1)
                     labels = labels.unsqueeze(1)
                     predictions = convert_train_id_to_color(predictions)
