@@ -185,7 +185,7 @@ def main(args):
             # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
             # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
             GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),  # Apply Gaussian blur
-        ], p=0.5),
+        ], p=0.9),
         ToDtype(torch.float32, scale=True),  # Convert to float32 and scale to [0, 1]
         Normalize((0.5,), (0.5,)),  # Normalize to [-1, 1]
     ])
@@ -198,7 +198,7 @@ def main(args):
         Normalize((0.5,), (0.5,)),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.3)
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.9)
 
     # Load datasets
     train_dataset = Cityscapes(
@@ -238,6 +238,14 @@ def main(args):
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
     ).to(device)
+
+    # Load pre-trained weights
+    weights_path = os.path.join("weights", "model.pth")
+    if os.path.exists(weights_path):
+        print(f"Loading weights from {weights_path}")
+        model.load_state_dict(torch.load(weights_path, map_location=device))
+    else:
+        print(f"Warning: Weights file not found at {weights_path}. Training from scratch.")
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
