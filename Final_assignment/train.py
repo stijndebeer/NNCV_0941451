@@ -47,38 +47,49 @@ class CombinedOCRLoss(nn.Module):
     def __init__(self, weight_ce=1.0, weight_dice=1.0, weight_ocr=1.0, weight_aux=0.4, num_classes=19, ignore_index=255):
         super().__init__()
         self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
+        self.dice_loss = DiceLoss(n_classes=num_classes, ignore_index=ignore_index)
         self.weight_ce = weight_ce
         self.weight_dice = weight_dice
         self.weight_ocr = weight_ocr
         self.weight_aux = weight_aux
-        self.num_classes = num_classes
-        self.ignore_index = ignore_index
 
     def forward(self, main_output, aux_output, targets):
         ce_loss = self.cross_entropy(main_output, targets)
-        # dice_loss = self._dice_loss(main_output, targets)
+        dice_loss = self.dice_loss(main_output, targets)
         aux_loss = self.cross_entropy(aux_output, targets)
 
         total_loss = (
             self.weight_ce * ce_loss +
-            # self.weight_dice * dice_loss +
+            self.weight_dice * dice_loss +
             self.weight_aux * aux_loss
         )
         return total_loss
+    
+class DiceLoss(nn.Module):
+    def __init__(self, n_classes=19, ignore_index=255, smooth=1e-6):
+        super(DiceLoss, self).__init__()
+        self.n_classes = n_classes
+        self.ignore_index = ignore_index
+        self.smooth = smooth
 
-    # def _dice_loss(self, outputs, targets, epsilon=1e-6):
-    #     probs = torch.softmax(outputs, dim=1)
-    #     one_hot_targets = F.one_hot(targets, num_classes=self.num_classes).permute(0, 3, 1, 2).float()
+    def forward(self, preds, targets):
+        # Apply softmax to get class probabilities for Dice loss
+        preds_softmax = F.softmax(preds, dim=1)  # [B, C, H, W]
 
-    #     if self.ignore_index is not None:
-    #         mask = (targets != self.ignore_index).unsqueeze(1)
-    #         probs = probs * mask
-    #         one_hot_targets = one_hot_targets * mask
+        # Create one-hot encoding of targets, ignoring ignored pixels
+        targets_onehot = F.one_hot(targets.clamp(0, self.n_classes - 1), num_classes=self.n_classes)  # [B, H, W, C]
+        targets_onehot = targets_onehot.permute(0, 3, 1, 2).float()  # [B, C, H, W]
 
-    #     intersection = (probs * one_hot_targets).sum(dim=(2, 3))
-    #     union = probs.sum(dim=(2, 3)) + one_hot_targets.sum(dim=(2, 3))
-    #     dice = (2 * intersection + epsilon) / (union + epsilon)
-    #     return 1 - dice.mean()
+        # Mask out ignored pixels
+        valid_mask = (targets != self.ignore_index).float()  # [B, H, W]
+        valid_mask = valid_mask.unsqueeze(1)  # [B, 1, H, W]
+
+        # Compute Dice loss
+        intersection = (preds_softmax * targets_onehot * valid_mask).sum(dim=(2, 3))  # [B, C]
+        union = (preds_softmax * valid_mask).sum(dim=(2, 3)) + (targets_onehot * valid_mask).sum(dim=(2, 3))  # [B, C]
+        dice_loss = 1 - ((2. * intersection + self.smooth) / (union + self.smooth)).mean()  # Scalar
+
+        return dice_loss
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -230,7 +241,7 @@ def main(args):
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    criterion = CombinedOCRLoss(weight_ce=1.0, weight_dice=1.0, weight_ocr=1.0, num_classes=19, ignore_index=255)
+    criterion = CombinedOCRLoss(weight_ce=1.0, weight_dice=1.0, weight_aux=0.4, num_classes=19, ignore_index=255)
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
