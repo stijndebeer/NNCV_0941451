@@ -249,7 +249,8 @@ def main(args):
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    criterion = CombinedOCRLoss(weight_ce=1.0, weight_dice=1.0, weight_aux=0.4, num_classes=19, ignore_index=255)
+    # criterion = CombinedOCRLoss(weight_ce=1.0, weight_dice=1.0, weight_aux=0.4, num_classes=19, ignore_index=255)
+    criterion = DiceLoss(n_classes=19, ignore_index=255)
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
@@ -279,8 +280,10 @@ def main(args):
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
             optimizer.zero_grad()
-            main_out, aux_out = model(images)
-            loss = criterion(main_out, aux_out, labels)
+            # main_out, aux_out = model(images)
+            # loss = criterion(main_out, aux_out, labels)
+            main_out = model(images)
+            loss = criterion(main_out, labels)
             loss.backward()
             optimizer.step()
 
@@ -301,8 +304,10 @@ def main(args):
                 images, labels = images.to(device), labels.to(device)
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                output, ocr_output = model(images)
-                loss = criterion(output, ocr_output, labels)
+                # output, ocr_output = model(images)
+                # loss = criterion(output, ocr_output, labels)
+                output = model(images)
+                loss = criterion(output, labels)
                 losses.append(loss.item())
                 
                 # Compute Dice Score

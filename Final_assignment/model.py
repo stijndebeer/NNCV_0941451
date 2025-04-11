@@ -65,7 +65,8 @@ class Model(nn.Module):
         self.up521 = Up(2)
         self.up531 = Up(4)
         self.up541 = Up(8)
-        self.ocr = OCRBlock(in_channels=960, mid_channels=512, out_channels=n_classes, num_classes=n_classes)
+        self.outconv = OutConv(960, n_classes)
+        # self.ocr = OCRBlock(in_channels=960, mid_channels=512, out_channels=n_classes, num_classes=n_classes)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -135,8 +136,9 @@ class Model(nn.Module):
         up531 = self.up531(d35)
         up541 = self.up541(d45)
         x = torch.cat([up521, up531, up541, d15], dim=1)
-        logits, aux_logits = self.ocr(x)
-        return logits, aux_logits
+        # logits, aux_logits = self.ocr(x)
+        logits = self.outconv(x)
+        return logits#, aux_logits
         
 
 class Doubleres(nn.Module): #basically a resnet block
@@ -257,6 +259,18 @@ class Up(nn.Module):
     def forward(self, x1):
         return self.up(x1)
 
+class OutConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(OutConv, self).__init__()
+        self.merge_conv = nn.Sequential(
+        nn.Conv2d(in_channels, in_channels, kernel_size=1),
+        nn.BatchNorm2d(in_channels),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(in_channels, out_channels, kernel_size=1),
+        )
+
+    def forward(self, x):
+        return self.merge_conv(x)
 
 class OCRBlock(nn.Module):
     def __init__(self, in_channels, mid_channels, out_channels, num_classes):
