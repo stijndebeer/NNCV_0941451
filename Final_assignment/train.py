@@ -44,26 +44,19 @@ from torchvision.transforms.v2 import (
 
 from model import Model
 
-class CombinedOCRLoss(nn.Module):
-    def __init__(self, weight_ce=1.0, weight_dice=1.0, weight_ocr=1.0, weight_aux=0.4, num_classes=19, ignore_index=255):
+class CombinedLoss(nn.Module):
+    def __init__(self, weight_ce=0.5, weight_dice=1.0, num_classes=19, ignore_index=255):
         super().__init__()
         self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
         self.dice_loss = DiceLoss(n_classes=num_classes, ignore_index=ignore_index)
         self.weight_ce = weight_ce
         self.weight_dice = weight_dice
-        self.weight_ocr = weight_ocr
-        self.weight_aux = weight_aux
 
-    def forward(self, main_output, aux_output, targets):
+    def forward(self, main_output, targets):
         ce_loss = self.cross_entropy(main_output, targets)
         dice_loss = self.dice_loss(main_output, targets)
-        aux_loss = self.cross_entropy(aux_output, targets)
 
-        total_loss = (
-            self.weight_ce * ce_loss +
-            self.weight_dice * dice_loss +
-            self.weight_aux * aux_loss
-        )
+        total_loss = (self.weight_ce * ce_loss + self.weight_dice * dice_loss)
         return total_loss
     
 class DiceLoss(nn.Module):
@@ -250,8 +243,8 @@ def main(args):
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    # criterion = CombinedOCRLoss(weight_ce=1.0, weight_dice=1.0, weight_aux=0.4, num_classes=19, ignore_index=255)
-    criterion = DiceLoss(n_classes=19, ignore_index=255)
+    criterion = CombinedLoss(weight_ce=0.5, weight_dice=1.0, num_classes=19, ignore_index=255)
+    # criterion = DiceLoss(n_classes=19, ignore_index=255)
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
