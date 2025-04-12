@@ -273,7 +273,7 @@ def main(args):
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    criterion = CombinedLoss(weight_ce=0.5, weight_dice=1.0, use_focal=False, gamma=2.0)
+    criterion = CombinedLoss(weight_ce=0.2, weight_dice=1.0, use_focal=False, gamma=2.0)
     # criterion = DiceLoss(n_classes=19, ignore_index=255)
 
     # Define the optimizer
