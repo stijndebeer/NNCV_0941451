@@ -171,7 +171,7 @@ def dice_score(preds, labels, num_classes, epsilon=1e-6):
     mean_dice = sum(dice_per_class) / num_classes
     return dice_per_class, mean_dice
 
-def probabilistic_transform(train_transform, normal_transform, train_prob=0.4):
+def probabilistic_transform(train_transform, normal_transform, train_prob=0.1):
     if random.random() < train_prob:
         return train_transform
     return normal_transform
