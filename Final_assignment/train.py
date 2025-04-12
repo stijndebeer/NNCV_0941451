@@ -205,7 +205,7 @@ def main(args):
         RandomHorizontalFlip(p=0.5),
         RandomRotation(degrees=10),
         RandomApply([
-            ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+            # ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
             RandomPerspective(distortion_scale=0.2, p=0.5),
             GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
         ], p=0.5),
