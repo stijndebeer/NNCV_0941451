@@ -150,6 +150,8 @@ def get_args_parser():
     parser.add_argument("--lr-factor", type=float, default=0.5, help="Factor to reduce LR by")
     parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
+    #accumulating gradients
+    parser.add_argument("--accumulation-steps", type=int, default=4, help="Number of steps to accumulate gradients")
     return parser
 
 def dice_score(preds, labels, num_classes, epsilon=1e-6):
@@ -272,7 +274,7 @@ def main(args):
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    criterion = CombinedLoss(weight_ce=0.5, weight_dice=1.0, use_focal=True, gamma=2.0)
+    criterion = CombinedLoss(weight_ce=0.5, weight_dice=1.0, use_focal=False, gamma=2.0)
     # criterion = DiceLoss(n_classes=19, ignore_index=255)
 
     # Define the optimizer
@@ -293,13 +295,14 @@ def main(args):
 
         # Training
         model.train()
+        optimizer.zero_grad() #gradient accumulation
         for i, (images, labels) in enumerate(train_dataloader):
 
             labels = convert_to_train_id(labels)  # Convert class IDs to train IDs
             images, labels = images.to(device), labels.to(device)
             labels = labels.long().squeeze(1)  # Remove channel dimension
 
-            optimizer.zero_grad()
+            # optimizer.zero_grad() #if not gradient acumulation
             # main_out, aux_out = model(images)
             # loss = criterion(main_out, aux_out, labels)
             # main_out = model(images)
@@ -313,8 +316,14 @@ def main(args):
                 loss = criterion(main_out, labels)
             # Backward pass with scaled
             scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
+            # scaler.step(optimizer)
+            # scaler.update()
+
+            # gradient accumulation
+            if (i + 1) % args.accumulation_steps == 0 or (i+1) == len(train_dataloader):
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
 
             wandb.log({
                 "train_loss": loss.item(),
