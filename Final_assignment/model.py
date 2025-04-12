@@ -176,12 +176,12 @@ class Tripleres(nn.Module): #basically a bottleneck resnet block
 
     def __init__(self, in_channels, out_channels, downsample=None):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=0, bias=False) #1 enorm_dice_final
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False) #1 enorm_dice_final
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
-        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=0, bias=False) #1 enorm_dice_final
+        self.conv3 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False) #1 enorm_dice_final
         self.bn3 = nn.BatchNorm2d(out_channels)
         self.downsample = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
