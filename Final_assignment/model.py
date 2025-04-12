@@ -65,8 +65,8 @@ class Model(nn.Module):
         self.up521 = Up(2)
         self.up531 = Up(4)
         self.up541 = Up(8)
-        # self.outconv = OutConv(960, n_classes)
-        self.outc = OutConv(960, n_classes) #for the bottleneckrun
+        self.outconv = OutConv(960, n_classes)
+        # self.outc = OutConv(960, n_classes) #for the bottleneckrun
         # self.ocr = OCRBlock(in_channels=960, mid_channels=512, out_channels=n_classes, num_classes=n_classes)
 
     def forward(self, x):
@@ -138,8 +138,8 @@ class Model(nn.Module):
         up541 = self.up541(d45)
         x = torch.cat([up521, up531, up541, d15], dim=1)
         # logits, aux_logits = self.ocr(x)
-        # logits = self.outconv(x)
-        logits = self.outc(x) #for the bottleneckrun
+        logits = self.outconv(x)
+        # logits = self.outc(x) #for the bottleneckrun
         return logits#, aux_logits
         
 
