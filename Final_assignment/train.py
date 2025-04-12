@@ -36,7 +36,6 @@ from torchvision.transforms.v2 import (
     RandomRotation,
     RandomApply,
     ColorJitter,
-    RandomAffine,
     RandomCrop,
     RandomPerspective,
     GaussianBlur
@@ -151,7 +150,7 @@ def get_args_parser():
     parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
     #accumulating gradients
-    parser.add_argument("--accumulation-steps", type=int, default=8, help="Number of steps to accumulate gradients")
+    parser.add_argument("--accumulation-steps", type=int, default=4, help="Number of steps to accumulate gradients")
     return parser
 
 def dice_score(preds, labels, num_classes, epsilon=1e-6):
@@ -223,7 +222,7 @@ def main(args):
         Normalize(mean=mean,std=std),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.6) #determine if we use train_transform or transform
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.8) #determine if we use train_transform or transform
 
     # Load datasets
     train_dataset = Cityscapes(
