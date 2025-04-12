@@ -45,9 +45,12 @@ from torchvision.transforms.v2 import (
 from model import Model
 
 class CombinedLoss(nn.Module):
-    def __init__(self, weight_ce=0.5, weight_dice=1.0, num_classes=19, ignore_index=255):
+    def __init__(self, weight_ce=0.5, weight_dice=1.0, use_focal=False, gamma=2.0, num_classes=19, ignore_index=255):
         super().__init__()
-        self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
+        if use_focal:
+            self.cross_entropy = FocalLoss(gamma=gamma, ignore_index=ignore_index)
+        else:
+            self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
         self.dice_loss = DiceLoss(n_classes=num_classes, ignore_index=ignore_index)
         self.weight_ce = weight_ce
         self.weight_dice = weight_dice
@@ -84,6 +87,30 @@ class DiceLoss(nn.Module):
         dice_loss = 1 - ((2. * intersection + self.smooth) / (union + self.smooth)).mean()  # Scalar
 
         return dice_loss
+    
+class FocalLoss(nn.Module):
+    def __init__(self, gamma=2.0, weight=None, ignore_index=255):
+        super().__init__()
+        self.gamma = gamma
+        self.ce = nn.CrossEntropyLoss(weight=weight, ignore_index=ignore_index)
+
+    def forward(self, input, target):
+        logpt = -self.ce(input, target)
+        pt = torch.exp(logpt)
+        loss = ((1 - pt) ** self.gamma) * (-logpt)
+        return loss.mean()
+
+class PolyLR(torch.optim.lr_scheduler._LRScheduler):
+    def __init__(self, optimizer, max_iters, power=0.9, last_epoch=-1):
+        self.max_iters = max_iters
+        self.power = power
+        super().__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        return [
+            base_lr * (1 - self.last_epoch / self.max_iters) ** self.power
+            for base_lr in self.base_lrs
+        ]
 
 # Mapping class IDs to train IDs
 id_to_trainid = {cls.id: cls.train_id for cls in Cityscapes.classes}
@@ -168,20 +195,22 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+
     # Define transforms for training (with augmentations)
     train_transform = Compose([
         ToImage(),
-        # Resize((256, 256)),
-        RandomCrop((256, 256), pad_if_needed=True), # Random crop with padding
-        RandomHorizontalFlip(p=0.5),  # Left-right flip
-        RandomRotation(degrees=10),  # Small random rotations
+        RandomCrop((256, 256), pad_if_needed=True),
+        RandomHorizontalFlip(p=0.5),
+        RandomRotation(degrees=10),
         RandomApply([
-            # ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Color variation
-            # RandomPerspective(distortion_scale=0.2, p=0.5),  # Perspective distortion
-            GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),  # Apply Gaussian blur
-        ], p=0.3),
-        ToDtype(torch.float32, scale=True),  # Convert to float32 and scale to [0, 1]
-        Normalize((0.5,), (0.5,)),  # Normalize to [-1, 1]
+            ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+            RandomPerspective(distortion_scale=0.2, p=0.5),
+            GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
+        ], p=0.5),
+        ToDtype(torch.float32, scale=True),
+        Normalize(mean=mean, std=std),
     ])
 
     # Define transforms for validation (no augmentations)
@@ -189,7 +218,7 @@ def main(args):
         ToImage(),
         Resize((256, 256)),
         ToDtype(torch.float32, scale=True),
-        Normalize((0.5,), (0.5,)),
+        Normalize(mean=mean,std=std),
     ])
 
     final_transform = probabilistic_transform(train_transform, transform, train_prob=0.1)
@@ -243,21 +272,15 @@ def main(args):
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    criterion = CombinedLoss(weight_ce=0.5, weight_dice=1.0, num_classes=19, ignore_index=255)
+    criterion = CombinedLoss(weight_ce=0.5, weight_dice=1.0, use_focal=True, gamma=2.0)
     # criterion = DiceLoss(n_classes=19, ignore_index=255)
 
     # Define the optimizer
     optimizer = AdamW(model.parameters(), lr=args.lr)
     
     # Define the scheduler
-    scheduler = ReduceLROnPlateau(
-        optimizer,
-        mode='min',
-        factor=args.lr_factor,
-        patience=args.lr_patience,
-        verbose=True,
-        min_lr=args.lr_min
-    )
+    total_iters = len(train_dataloader) * args.epochs
+    scheduler = PolyLR(optimizer, max_iters=total_iters, power=0.9)
 
     # Initialize GradScaler for mixed precision training
     scaler = torch.amp.GradScaler()
