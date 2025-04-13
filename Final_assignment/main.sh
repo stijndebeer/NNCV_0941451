@@ -7,4 +7,4 @@ python3 train.py \
     --lr 0.0007 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "final_citymean_equal" \
+    --experiment-id "final_citymean_05_1" \
