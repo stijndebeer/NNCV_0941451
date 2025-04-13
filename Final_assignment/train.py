@@ -170,7 +170,7 @@ def dice_score(preds, labels, num_classes, epsilon=1e-6):
     mean_dice = sum(dice_per_class) / num_classes
     return dice_per_class, mean_dice
 
-def probabilistic_transform(train_transform, normal_transform, train_prob=0.1):
+def probabilistic_transform(train_transform, normal_transform, train_prob=1):
     if random.random() < train_prob:
         return train_transform
     return normal_transform
@@ -196,8 +196,12 @@ def main(args):
     # Define the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
+    # mean = [0.485, 0.456, 0.406] #imagenet
+    # mean = [0.5,] #TA
+    mean=[0.2869, 0.3251, 0.2839] #cityscapes
+    # std = [0.229, 0.224, 0.225] #imagenet
+    # std = [0.5,] #TA
+    std=[0.1867, 0.1908, 0.1871] #cityscapes
 
     # Define transforms for training (with augmentations)
     train_transform = Compose([
@@ -222,7 +226,7 @@ def main(args):
         Normalize(mean=mean,std=std),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.8) #determine if we use train_transform or transform
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.6) #determine if we use train_transform or transform
 
     # Load datasets
     train_dataset = Cityscapes(
@@ -239,7 +243,6 @@ def main(args):
         target_type="semantic", 
         transforms=transform  # No augmentation for validation
     )
-    
 
     train_dataset = wrap_dataset_for_transforms_v2(train_dataset)
     valid_dataset = wrap_dataset_for_transforms_v2(valid_dataset)
