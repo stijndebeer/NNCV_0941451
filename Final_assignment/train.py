@@ -210,8 +210,8 @@ def main(args):
         RandomHorizontalFlip(p=0.5),
         RandomRotation(degrees=10),
         RandomApply([
-            # ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
-            RandomPerspective(distortion_scale=0.2, p=0.5),
+            ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
+            RandomPerspective(distortion_scale=0.1, p=0.5),
             GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
         ], p=0.5),
         ToDtype(torch.float32, scale=True),
@@ -226,7 +226,7 @@ def main(args):
         Normalize(mean=mean,std=std),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.6) #determine if we use train_transform or transform
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=1) #determine if we use train_transform or transform
 
     # Load datasets
     train_dataset = Cityscapes(
@@ -276,7 +276,7 @@ def main(args):
 
     # Define the loss function
     # criterion = nn.CrossEntropyLoss(ignore_index=255)  # Ignore the void class
-    criterion = CombinedLoss(weight_ce=1.0, weight_dice=0.0, use_focal=False, gamma=2.0)
+    criterion = CombinedLoss(weight_ce=0.5, weight_dice=1.0, use_focal=False, gamma=2.0)
     # criterion = DiceLoss(n_classes=19, ignore_index=255)
 
     # Define the optimizer
