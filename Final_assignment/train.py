@@ -226,7 +226,7 @@ def main(args):
         Normalize(mean=mean,std=std),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, train_prob=1) #determine if we use train_transform or transform
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.6) #determine if we use train_transform or transform
 
     # Load datasets
     train_dataset = Cityscapes(
