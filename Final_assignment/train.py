@@ -210,7 +210,7 @@ def main(args):
         RandomHorizontalFlip(p=0.5),
         RandomRotation(degrees=10),
         RandomApply([
-            ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
+            # ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
             RandomPerspective(distortion_scale=0.1, p=0.5),
             GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
         ], p=0.5),
@@ -226,7 +226,7 @@ def main(args):
         Normalize(mean=mean,std=std),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.6) #determine if we use train_transform or transform
+    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.4) #determine if we use train_transform or transform
 
     # Load datasets
     train_dataset = Cityscapes(
