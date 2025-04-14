@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class Model(nn.Module):
-    def __init__(self, in_channels=3, n_classes=1):
+    def __init__(self, in_channels=3, n_classes=19):
         
         super(Model, self).__init__()
 

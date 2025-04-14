@@ -257,7 +257,7 @@ def main(args):
     model = Model(
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
-    ).to(device).cuda()
+    ).to(device).cuda() #remove cuda when not using MAP
 
     # Load pre-trained weights
     weights_path = os.path.join("weights", "model.pth")
@@ -280,7 +280,7 @@ def main(args):
     scheduler = PolyLR(optimizer, max_iters=total_iters, power=0.9)
 
     # Initialize GradScaler for mixed precision training
-    scaler = torch.amp.GradScaler()
+    scaler = torch.amp.GradScaler() #remove when not using MAP
 
     # Training loop
     best_valid_loss = float('inf')
@@ -337,15 +337,9 @@ def main(args):
                 images, labels = images.to(device), labels.to(device)
                 labels = labels.long().squeeze(1)  # Remove channel dimension
 
-                # output, ocr_output = model(images)
-                # loss = criterion(output, ocr_output, labels)
                 output = model(images)
                 loss = criterion(output, labels)
 
-                # Mixed precision forward pass
-                # with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
-                #     output = model(images)
-                #     loss = criterion(output, labels)
                 losses.append(loss.item())
                 
                 # Compute Dice Score
