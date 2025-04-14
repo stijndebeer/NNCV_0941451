@@ -170,11 +170,6 @@ def dice_score(preds, labels, num_classes, epsilon=1e-6):
     mean_dice = sum(dice_per_class) / num_classes
     return dice_per_class, mean_dice
 
-def probabilistic_transform(train_transform, normal_transform, train_prob=1):
-    if random.random() < train_prob:
-        return train_transform
-    return normal_transform
-
 def main(args):
     # Initialize wandb for logging
     wandb.init(
@@ -226,15 +221,13 @@ def main(args):
         Normalize(mean=mean,std=std),
     ])
 
-    final_transform = probabilistic_transform(train_transform, transform, train_prob=0.2) #determine if we use train_transform or transform
-
     # Load datasets
     train_dataset = Cityscapes(
         args.data_dir, 
         split="train", 
         mode="fine", 
         target_type="semantic", 
-        transforms=final_transform
+        transforms=train_transform
     )
     valid_dataset = Cityscapes(
         args.data_dir, 
@@ -346,13 +339,13 @@ def main(args):
 
                 # output, ocr_output = model(images)
                 # loss = criterion(output, ocr_output, labels)
-                # output = model(images)
-                # loss = criterion(output, labels)
+                output = model(images)
+                loss = criterion(output, labels)
 
                 # Mixed precision forward pass
-                with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
-                    output = model(images)
-                    loss = criterion(output, labels)
+                # with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
+                #     output = model(images)
+                #     loss = criterion(output, labels)
                 losses.append(loss.item())
                 
                 # Compute Dice Score

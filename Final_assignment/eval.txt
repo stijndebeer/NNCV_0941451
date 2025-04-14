@@ -1,0 +1,43 @@
+
+    #load model
+    model_path = os.path.join(submit_dir, "model.pth")
+    model = Model()
+    model.load_state_dict(torch.load(model_path))
+    model.eval().to(device)
+
+    images_path = os.path.join(ref_dir, 'Cityscapes_processed_val', 'Images', 'val')
+    masks_path = os.path.join(ref_dir, 'Cityscapes_processed_val', 'Masks', 'val')
+
+    images_path, masks_path = Dataloader.get_path_pairs(images_path, masks_path)
+
+    dice_summary = np.zeros([len(images_path), 8])
+    dice_all_classes = np.zeros([len(images_path), 19])
+
+    with torch.no_grad():
+        for i in range(len(images_path)):
+            img = Image.open(images_path[i])
+            mask = np.array(Image.open(masks_path[i]))
+
+            mask = utils.encode_labels_to_classes(mask)
+
+            original_shape = np.array(img).shape
+
+            #preprocessing of the image
+            img = preprocess(img)
+            pred = model(img.to(device))
+            seg_pred = postprocess(pred, original_shape[:2])
+
+            print('---------')
+            print(i)
+            print('---------')
+
+            #process segmentation prediction and calculate dice
+            dice = Metrics.dice_multilabel(mask, seg_pred)
+            dice_summary[i, 7] = np.nanmean(dice)
+            dice_all_classes[i,:] = dice
+
+            seg_pred = utils.encode_classes_to_cat(seg_pred)
+            mask = utils.encode_classes_to_cat(mask)
+            dice = Metrics.dice_multilabel_cat(mask, seg_pred)
+
+            dice_summary[i,:7] = dice
