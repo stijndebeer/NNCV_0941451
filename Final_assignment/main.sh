@@ -7,4 +7,4 @@ python3 train.py \
     --lr 0.0007 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "enorm_noMAP_notrainMAP512" \
+    --experiment-id "enorm_noMAP_notrainMAP" \
