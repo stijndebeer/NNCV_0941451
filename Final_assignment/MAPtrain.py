@@ -23,6 +23,7 @@ import random
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, ConcatDataset
+from torch.cuda.amp import GradScaler, autocast
 from torchvision.datasets import Cityscapes, wrap_dataset_for_transforms_v2
 from torchvision.utils import make_grid
 from torchvision.transforms.v2 import (
@@ -256,7 +257,7 @@ def main(args):
     model = Model(
         in_channels=3,  # RGB images
         n_classes=19,  # 19 classes in the Cityscapes dataset
-    ).to(device)
+    ).to(device).cuda() #remove cuda when not using MAP
 
     # Load pre-trained weights
     weights_path = os.path.join("weights", "model.pth")
@@ -277,6 +278,9 @@ def main(args):
     # Define the scheduler
     total_iters = len(train_dataloader) * args.epochs
     scheduler = PolyLR(optimizer, max_iters=total_iters, power=0.9)
+
+    # Initialize GradScaler for mixed precision training
+    scaler = torch.amp.GradScaler() #remove when not using MAP
 
     # Training loop
     best_valid_loss = float('inf')
@@ -301,14 +305,19 @@ def main(args):
             # loss.backward()
             # optimizer.step()
 
-            main_out = model(images)
-            loss = criterion(main_out, labels)
+            # Mixed precision forward pass
+            with torch.amp.autocast(device_type='cuda', dtype=torch.float16):
+                main_out = model(images)
+                loss = criterion(main_out, labels)
             # Backward pass with scaled
-            loss.backward()
+            scaler.scale(loss).backward()
+            # scaler.step(optimizer)
+            # scaler.update()
 
             # gradient accumulation
             if (i + 1) % args.accumulation_steps == 0 or (i+1) == len(train_dataloader):
-                optimizer.step()
+                scaler.step(optimizer)
+                scaler.update()
                 optimizer.zero_grad()
 
             wandb.log({
