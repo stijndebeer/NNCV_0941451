@@ -206,6 +206,8 @@ def main(args):
         RandomApply([
             ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
             RandomPerspective(distortion_scale=0.1, p=0.5),
+        ], p=0.3),
+        RandomApply([
             GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
         ], p=0.5),
         ToDtype(torch.float32, scale=True),
@@ -259,7 +261,7 @@ def main(args):
     ).to(device)
 
     # Load pre-trained weights
-    weights_path = os.path.join("weights", "model.pth")
+    weights_path = os.path.join("weights", "modelsss.pth")  ### change when you want pre trained
     if os.path.exists(weights_path):
         print(f"Loading weights from {weights_path}")
         model.load_state_dict(torch.load(weights_path, map_location=device))
