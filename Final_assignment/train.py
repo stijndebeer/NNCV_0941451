@@ -200,7 +200,7 @@ def main(args):
     # Define transforms for training (with augmentations)
     train_transform = Compose([
         ToImage(),
-        RandomCrop((256, 256), pad_if_needed=True),
+        RandomCrop((512, 512), pad_if_needed=True),
         RandomHorizontalFlip(p=0.5),
         RandomRotation(degrees=10),
         RandomApply([
@@ -215,7 +215,7 @@ def main(args):
     # Define transforms for validation (no augmentations)
     transform = Compose([
         ToImage(),
-        Resize((256, 256)),
+        Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=mean,std=std),
     ])
