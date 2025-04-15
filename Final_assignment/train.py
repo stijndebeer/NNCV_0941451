@@ -149,7 +149,7 @@ def get_args_parser():
     parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
     #accumulating gradients
-    parser.add_argument("--accumulation-steps", type=int, default=8, help="Number of steps to accumulate gradients")
+    parser.add_argument("--accumulation-steps", type=int, default=16, help="Number of steps to accumulate gradients")
     return parser
 
 def dice_score(preds, labels, num_classes, epsilon=1e-6):
@@ -200,7 +200,7 @@ def main(args):
     # Define transforms for training (with augmentations)
     train_transform = Compose([
         ToImage(),
-        RandomCrop((256, 256), pad_if_needed=True),
+        RandomCrop((512, 512), pad_if_needed=True),
         RandomHorizontalFlip(p=0.5),
         RandomRotation(degrees=10),
         RandomApply([
@@ -215,7 +215,7 @@ def main(args):
     # Define transforms for validation (no augmentations)
     transform = Compose([
         ToImage(),
-        Resize((256, 256)),
+        Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=mean,std=std),
     ])

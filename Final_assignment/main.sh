@@ -2,9 +2,9 @@ wandb login
 
 python3 train.py \
     --data-dir ./data/cityscapes \
-    --batch-size 8 \
+    --batch-size 4 \
     --epochs 100 \
     --lr 0.0007 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "enorm_noMAP_notrainMAP" \
+    --experiment-id "enorm_noMAP_notrainMAP512" \
