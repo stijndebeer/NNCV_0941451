@@ -149,7 +149,7 @@ def get_args_parser():
     parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
     #accumulating gradients
-    parser.add_argument("--accumulation-steps", type=int, default=8, help="Number of steps to accumulate gradients")
+    parser.add_argument("--accumulation-steps", type=int, default=32, help="Number of steps to accumulate gradients")
     return parser                                               #32 for 512x512 8 for 256x256
 
 def dice_score(preds, labels, num_classes, epsilon=1e-6):
