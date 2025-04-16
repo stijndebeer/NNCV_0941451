@@ -202,10 +202,10 @@ def main(args):
         RandomCrop((512, 512), pad_if_needed=True),
         RandomHorizontalFlip(p=0.5),
         RandomRotation(degrees=5),
-        # RandomApply([
-        #     ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
-        #     RandomPerspective(distortion_scale=0.1, p=0.5),
-        # ], p=0.3),
+        RandomApply([
+            ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
+            RandomPerspective(distortion_scale=0.1, p=0.5),
+        ], p=0.3),
         RandomApply([
             GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5.0)),
         ], p=0.5),
