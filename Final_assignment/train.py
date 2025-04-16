@@ -131,6 +131,22 @@ def convert_train_id_to_color(prediction: torch.Tensor) -> torch.Tensor:
 
     return color_image
 
+def dice_score(preds, labels, num_classes, epsilon=1e-6):
+    """Computes the Dice Score for multiple classes"""
+    dice_per_class = []
+    
+    for class_id in range(num_classes):
+        pred_mask = (preds == class_id).float()
+        label_mask = (labels == class_id).float()
+
+        intersection = (pred_mask * label_mask).sum()
+        union = pred_mask.sum() + label_mask.sum()
+
+        dice = (2. * intersection + epsilon) / (union + epsilon)
+        dice_per_class.append(dice.item())
+
+    mean_dice = sum(dice_per_class) / num_classes
+    return dice_per_class, mean_dice
 
 def get_args_parser():
 
@@ -151,23 +167,6 @@ def get_args_parser():
     #accumulating gradients
     parser.add_argument("--accumulation-steps", type=int, default=32, help="Number of steps to accumulate gradients")
     return parser                                               #32 for 512x512 8 for 256x256
-
-def dice_score(preds, labels, num_classes, epsilon=1e-6):
-    """Computes the Dice Score for multiple classes"""
-    dice_per_class = []
-    
-    for class_id in range(num_classes):
-        pred_mask = (preds == class_id).float()
-        label_mask = (labels == class_id).float()
-
-        intersection = (pred_mask * label_mask).sum()
-        union = pred_mask.sum() + label_mask.sum()
-
-        dice = (2. * intersection + epsilon) / (union + epsilon)
-        dice_per_class.append(dice.item())
-
-    mean_dice = sum(dice_per_class) / num_classes
-    return dice_per_class, mean_dice
 
 def main(args):
     # Initialize wandb for logging
@@ -261,7 +260,7 @@ def main(args):
     ).to(device)
 
     # Load pre-trained weights
-    weights_path = os.path.join("weights", "modelsss.pth")  ### change when you want pre trained
+    weights_path = os.path.join("weights", "enormgauss.pth")  ### change when you want pre trained
     if os.path.exists(weights_path):
         print(f"Loading weights from {weights_path}")
         model.load_state_dict(torch.load(weights_path, map_location=device))
