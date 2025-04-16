@@ -260,7 +260,7 @@ def main(args):
     ).to(device)
 
     # Load pre-trained weights
-    weights_path = os.path.join("weights", "enormgauss.pth")  ### change when you want pre trained
+    weights_path = os.path.join("weights", "enormall.pth")  ### change when you want pre trained
     if os.path.exists(weights_path):
         print(f"Loading weights from {weights_path}")
         model.load_state_dict(torch.load(weights_path, map_location=device))
