@@ -228,7 +228,7 @@ def main(args):
         split="train", 
         mode="fine", 
         target_type="semantic", 
-        transforms=train_transform
+        transforms=transform
     )
     valid_dataset = Cityscapes(
         args.data_dir, 
