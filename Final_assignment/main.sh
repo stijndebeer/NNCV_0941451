@@ -7,4 +7,4 @@ python3 train.py \
     --lr 0.0007 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "enorm_256_nopretrain" \
+    --experiment-id "enorm_512_nopretrain_nocollorjit" \
