@@ -149,7 +149,7 @@ def get_args_parser():
     parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
     #accumulating gradients
-    parser.add_argument("--accumulation-steps", type=int, default=8, help="Number of steps to accumulate gradients")
+    parser.add_argument("--accumulation-steps", type=int, default=32, help="Number of steps to accumulate gradients")
     return parser                                               #32 for 512x512 8 for 256x256
 
 def dice_score(preds, labels, num_classes, epsilon=1e-6):
@@ -202,13 +202,13 @@ def main(args):
         ToImage(),
         RandomCrop((512, 512), pad_if_needed=True),
         RandomHorizontalFlip(p=0.5),
-        RandomRotation(degrees=10),
+        RandomRotation(degrees=5),
         # RandomApply([
         #     ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
         #     RandomPerspective(distortion_scale=0.1, p=0.5),
         # ], p=0.3),
         RandomApply([
-            GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
+            GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5.0)),
         ], p=0.5),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=mean, std=std),
@@ -217,7 +217,7 @@ def main(args):
     # Define transforms for validation (no augmentations)
     transform = Compose([
         ToImage(),
-        Resize((256, 256)),
+        Resize((512, 512)),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=mean,std=std),
     ])
@@ -228,7 +228,7 @@ def main(args):
         split="train", 
         mode="fine", 
         target_type="semantic", 
-        transforms=transform
+        transforms=train_transform
     )
     valid_dataset = Cityscapes(
         args.data_dir, 
