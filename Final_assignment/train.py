@@ -250,16 +250,6 @@ def main(args):
                     f"best_model-epoch={epoch:04}-val_loss={valid_loss:04}.pth"
                 )
                 torch.save(model.state_dict(), current_best_model_path)
-
-            # if mean_dice < best_dice:
-            #     best_dice = mean_dice
-            #     if current_best_dice_path:
-            #         os.remove(current_best_dice_path)
-            #     current_best_dice_path = os.path.join(
-            #         output_dir, 
-            #         f"best_model-epoch={epoch:04}-val_loss={mean_dice:04}.pth"
-            #     )
-            #     torch.save(model.state_dict(), current_best_dice_path)
         
     print("Training complete!")
 
