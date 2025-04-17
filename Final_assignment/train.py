@@ -165,7 +165,7 @@ def get_args_parser():
     parser.add_argument("--lr-min", type=float, default=1e-6, help="Minimum learning rate")
 
     #accumulating gradients
-    parser.add_argument("--accumulation-steps", type=int, default=32, help="Number of steps to accumulate gradients")
+    parser.add_argument("--accumulation-steps", type=int, default=64, help="Number of steps to accumulate gradients")
     return parser                                               #32 for 512x512 8 for 256x256
 
 def main(args):
@@ -202,10 +202,10 @@ def main(args):
         RandomCrop((512, 512), pad_if_needed=True),
         RandomHorizontalFlip(p=0.5),
         RandomRotation(degrees=5),
-        RandomApply([
-            ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
-            RandomPerspective(distortion_scale=0.1, p=0.5),
-        ], p=0.3),
+        # RandomApply([
+        #     ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
+        #     RandomPerspective(distortion_scale=0.1, p=0.5),
+        # ], p=0.3),
         RandomApply([
             GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5.0)),
         ], p=0.5),
