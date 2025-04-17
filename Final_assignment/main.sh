@@ -7,4 +7,4 @@ python3 train.py \
     --lr 0.0005 \
     --num-workers 10 \
     --seed 42 \
-    --experiment-id "enorm_512_bigall_0005" \
+    --experiment-id "enorm_512_gauss_0005_bs128" \
