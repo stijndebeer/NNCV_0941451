@@ -141,7 +141,7 @@ def get_args_parser():
     # ReduceLROnPlateau
     parser.add_argument("--lr-patience", type=int, default=8, help="Epochs with no improvement before reducing LR")
     parser.add_argument("--lr-factor", type=float, default=0.75, help="Factor to reduce LR by")
-    parser.add_argument("--lr-min", type=float, default=0.0004, help="Minimum learning rate")
+    parser.add_argument("--lr-min", type=float, default=0.0003, help="Minimum learning rate")
 
     #accumulating gradients
     parser.add_argument("--accumulation-steps", type=int, default=8, help="Number of steps to accumulate gradients")
@@ -196,10 +196,10 @@ def main(args):
         RandomRotation(degrees=10),
         RandomApply([
             GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
-        ], p=0.1),
+        ], p=0.3),
         RandomApply([
             ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1),
-        ], p=0.1),
+        ], p=0.3),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=mean, std=std),
     ])
